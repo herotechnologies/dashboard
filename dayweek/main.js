@@ -24,7 +24,8 @@ var tables;
                 old_icon: 'icons/great.png',
                 Dial: 0,
                 Prescriber: 0,
-                non_prescriber: 0
+                non_prescriber: 0,
+                connects: 0
             };
         };
         AgentModel.prototype.initialize = function () {
@@ -205,7 +206,9 @@ var tables;
         AgentsCollection.prototype.parse = function (res) {
             _.map(res.agents, function (item) {
                 item.non_prescriber = item['Non- prescriber'];
+                item.connects = item.non_prescriber + item.Prescriber;
             });
+            this.trigger('myParse', res.agents, this.params.report);
             return res.agents;
         };
         return AgentsCollection;
@@ -257,5 +260,66 @@ $(document).ready(function () {
         delay: 2,
         speed: 0.7
     });
+    var controller = new tables.SummaryController(collection);
 });
+var tables;
+(function (tables) {
+    var SummaryModel = (function (_super) {
+        __extends(SummaryModel, _super);
+        function SummaryModel(obj) {
+            _super.call(this, obj);
+        }
+        SummaryModel.prototype.defaults = function () {
+            return {
+                id: 0,
+                dials: 0,
+                connects: 0,
+                type: 'Weekly'
+            };
+        };
+        return SummaryModel;
+    }(Backbone.Model));
+    tables.SummaryModel = SummaryModel;
+    var SummaryView = (function (_super) {
+        __extends(SummaryView, _super);
+        function SummaryView(options) {
+            var _this = this;
+            _super.call(this, options);
+            this.setElement('#Summary');
+            this.template = options.template;
+            this.model.on('change', function () { return _this.render(); });
+            this.template = _.template($(this.template).html());
+        }
+        SummaryView.prototype.render = function () {
+            this.$el.html(this.template(this.model.toJSON()));
+            return this;
+        };
+        return SummaryView;
+    }(Backbone.View));
+    tables.SummaryView = SummaryView;
+    var SummaryController = (function () {
+        function SummaryController(collection) {
+            var _this = this;
+            this.model = new SummaryModel({}),
+                this.view = new SummaryView({
+                    model: this.model,
+                    template: '#row-template4'
+                });
+            collection.on('myParse', function (evt, par) {
+                var dials = 0;
+                var connects = 0;
+                _.map(evt, function (item) {
+                    dials += item.Dial;
+                    connects += item.connects;
+                });
+                if (par == 'w')
+                    _this.model.set({ type: 'Weekly', dials: dials, connects: connects });
+                else
+                    _this.model.set({ type: 'Daily', dials: dials, connects: connects });
+            });
+        }
+        return SummaryController;
+    }());
+    tables.SummaryController = SummaryController;
+})(tables || (tables = {}));
 //# sourceMappingURL=main.js.map
